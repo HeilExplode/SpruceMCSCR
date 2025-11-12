@@ -1,0 +1,50 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  com.mojang.serialization.Codec
+ */
+package net.minecraft.world.flag;
+
+import com.mojang.serialization.Codec;
+import java.util.Set;
+import java.util.stream.Collectors;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.flag.FeatureFlag;
+import net.minecraft.world.flag.FeatureFlagRegistry;
+import net.minecraft.world.flag.FeatureFlagSet;
+
+public class FeatureFlags {
+    public static final FeatureFlag VANILLA;
+    public static final FeatureFlag BUNDLE;
+    public static final FeatureFlag TRADE_REBALANCE;
+    public static final FeatureFlagRegistry REGISTRY;
+    public static final Codec<FeatureFlagSet> CODEC;
+    public static final FeatureFlagSet VANILLA_SET;
+    public static final FeatureFlagSet DEFAULT_FLAGS;
+
+    public static String printMissingFlags(FeatureFlagSet featureFlagSet, FeatureFlagSet featureFlagSet2) {
+        return FeatureFlags.printMissingFlags(REGISTRY, featureFlagSet, featureFlagSet2);
+    }
+
+    public static String printMissingFlags(FeatureFlagRegistry featureFlagRegistry, FeatureFlagSet featureFlagSet, FeatureFlagSet featureFlagSet2) {
+        Set<ResourceLocation> set = featureFlagRegistry.toNames(featureFlagSet2);
+        Set<ResourceLocation> set2 = featureFlagRegistry.toNames(featureFlagSet);
+        return set.stream().filter(resourceLocation -> !set2.contains(resourceLocation)).map(ResourceLocation::toString).collect(Collectors.joining(", "));
+    }
+
+    public static boolean isExperimental(FeatureFlagSet featureFlagSet) {
+        return !featureFlagSet.isSubsetOf(VANILLA_SET);
+    }
+
+    static {
+        FeatureFlagRegistry.Builder builder = new FeatureFlagRegistry.Builder("main");
+        VANILLA = builder.createVanilla("vanilla");
+        BUNDLE = builder.createVanilla("bundle");
+        TRADE_REBALANCE = builder.createVanilla("trade_rebalance");
+        REGISTRY = builder.build();
+        CODEC = REGISTRY.codec();
+        DEFAULT_FLAGS = VANILLA_SET = FeatureFlagSet.of(VANILLA);
+    }
+}
+

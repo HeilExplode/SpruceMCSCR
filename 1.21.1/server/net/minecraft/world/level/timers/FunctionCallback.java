@@ -1,0 +1,57 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package net.minecraft.world.level.timers;
+
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.functions.CommandFunction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.ServerFunctionManager;
+import net.minecraft.world.level.timers.TimerCallback;
+import net.minecraft.world.level.timers.TimerQueue;
+
+public class FunctionCallback
+implements TimerCallback<MinecraftServer> {
+    final ResourceLocation functionId;
+
+    public FunctionCallback(ResourceLocation resourceLocation) {
+        this.functionId = resourceLocation;
+    }
+
+    @Override
+    public void handle(MinecraftServer minecraftServer, TimerQueue<MinecraftServer> timerQueue, long l) {
+        ServerFunctionManager serverFunctionManager = minecraftServer.getFunctions();
+        serverFunctionManager.get(this.functionId).ifPresent(commandFunction -> serverFunctionManager.execute((CommandFunction<CommandSourceStack>)commandFunction, serverFunctionManager.getGameLoopSender()));
+    }
+
+    @Override
+    public /* synthetic */ void handle(Object object, TimerQueue timerQueue, long l) {
+        this.handle((MinecraftServer)object, (TimerQueue<MinecraftServer>)timerQueue, l);
+    }
+
+    public static class Serializer
+    extends TimerCallback.Serializer<MinecraftServer, FunctionCallback> {
+        public Serializer() {
+            super(ResourceLocation.withDefaultNamespace("function"), FunctionCallback.class);
+        }
+
+        @Override
+        public void serialize(CompoundTag compoundTag, FunctionCallback functionCallback) {
+            compoundTag.putString("Name", functionCallback.functionId.toString());
+        }
+
+        @Override
+        public FunctionCallback deserialize(CompoundTag compoundTag) {
+            ResourceLocation resourceLocation = ResourceLocation.parse(compoundTag.getString("Name"));
+            return new FunctionCallback(resourceLocation);
+        }
+
+        @Override
+        public /* synthetic */ TimerCallback deserialize(CompoundTag compoundTag) {
+            return this.deserialize(compoundTag);
+        }
+    }
+}
+

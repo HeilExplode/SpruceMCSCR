@@ -1,0 +1,49 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package net.minecraft.world.item;
+
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.component.SuspiciousStewEffects;
+import net.minecraft.world.level.Level;
+
+public class SuspiciousStewItem
+extends Item {
+    public static final int DEFAULT_DURATION = 160;
+
+    public SuspiciousStewItem(Item.Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    public void appendHoverText(ItemStack itemStack, Item.TooltipContext tooltipContext, List<Component> list, TooltipFlag tooltipFlag) {
+        super.appendHoverText(itemStack, tooltipContext, list, tooltipFlag);
+        if (tooltipFlag.isCreative()) {
+            ArrayList<MobEffectInstance> arrayList = new ArrayList<MobEffectInstance>();
+            SuspiciousStewEffects suspiciousStewEffects = itemStack.getOrDefault(DataComponents.SUSPICIOUS_STEW_EFFECTS, SuspiciousStewEffects.EMPTY);
+            for (SuspiciousStewEffects.Entry entry : suspiciousStewEffects.effects()) {
+                arrayList.add(entry.createEffectInstance());
+            }
+            PotionContents.addPotionTooltip(arrayList, list::add, 1.0f, tooltipContext.tickRate());
+        }
+    }
+
+    @Override
+    public ItemStack finishUsingItem(ItemStack itemStack, Level level, LivingEntity livingEntity) {
+        SuspiciousStewEffects suspiciousStewEffects = itemStack.getOrDefault(DataComponents.SUSPICIOUS_STEW_EFFECTS, SuspiciousStewEffects.EMPTY);
+        for (SuspiciousStewEffects.Entry entry : suspiciousStewEffects.effects()) {
+            livingEntity.addEffect(entry.createEffectInstance());
+        }
+        return super.finishUsingItem(itemStack, level, livingEntity);
+    }
+}
+

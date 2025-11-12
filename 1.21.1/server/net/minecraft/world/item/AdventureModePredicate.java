@@ -1,0 +1,134 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  com.mojang.datafixers.kinds.App
+ *  com.mojang.datafixers.kinds.Applicative
+ *  com.mojang.serialization.Codec
+ *  com.mojang.serialization.DataResult
+ *  com.mojang.serialization.codecs.RecordCodecBuilder
+ *  javax.annotation.Nullable
+ */
+package net.minecraft.world.item;
+
+import com.mojang.datafixers.kinds.App;
+import com.mojang.datafixers.kinds.Applicative;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
+import javax.annotation.Nullable;
+import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.critereon.BlockPredicate;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.pattern.BlockInWorld;
+
+public class AdventureModePredicate {
+    private static final Codec<AdventureModePredicate> SIMPLE_CODEC = BlockPredicate.CODEC.flatComapMap(blockPredicate -> new AdventureModePredicate(List.of(blockPredicate), true), adventureModePredicate -> DataResult.error(() -> "Cannot encode"));
+    private static final Codec<AdventureModePredicate> FULL_CODEC = RecordCodecBuilder.create(instance -> instance.group((App)ExtraCodecs.nonEmptyList(BlockPredicate.CODEC.listOf()).fieldOf("predicates").forGetter(adventureModePredicate -> adventureModePredicate.predicates), (App)Codec.BOOL.optionalFieldOf("show_in_tooltip", (Object)true).forGetter(AdventureModePredicate::showInTooltip)).apply((Applicative)instance, AdventureModePredicate::new));
+    public static final Codec<AdventureModePredicate> CODEC = Codec.withAlternative(FULL_CODEC, SIMPLE_CODEC);
+    public static final StreamCodec<RegistryFriendlyByteBuf, AdventureModePredicate> STREAM_CODEC = StreamCodec.composite(BlockPredicate.STREAM_CODEC.apply(ByteBufCodecs.list()), adventureModePredicate -> adventureModePredicate.predicates, ByteBufCodecs.BOOL, AdventureModePredicate::showInTooltip, AdventureModePredicate::new);
+    public static final Component CAN_BREAK_HEADER = Component.translatable("item.canBreak").withStyle(ChatFormatting.GRAY);
+    public static final Component CAN_PLACE_HEADER = Component.translatable("item.canPlace").withStyle(ChatFormatting.GRAY);
+    private static final Component UNKNOWN_USE = Component.translatable("item.canUse.unknown").withStyle(ChatFormatting.GRAY);
+    private final List<BlockPredicate> predicates;
+    private final boolean showInTooltip;
+    private final List<Component> tooltip;
+    @Nullable
+    private BlockInWorld lastCheckedBlock;
+    private boolean lastResult;
+    private boolean checksBlockEntity;
+
+    private AdventureModePredicate(List<BlockPredicate> list, boolean bl, List<Component> list2) {
+        this.predicates = list;
+        this.showInTooltip = bl;
+        this.tooltip = list2;
+    }
+
+    public AdventureModePredicate(List<BlockPredicate> list, boolean bl) {
+        this.predicates = list;
+        this.showInTooltip = bl;
+        this.tooltip = AdventureModePredicate.computeTooltip(list);
+    }
+
+    private static boolean areSameBlocks(BlockInWorld blockInWorld, @Nullable BlockInWorld blockInWorld2, boolean bl) {
+        if (blockInWorld2 == null || blockInWorld.getState() != blockInWorld2.getState()) {
+            return false;
+        }
+        if (!bl) {
+            return true;
+        }
+        if (blockInWorld.getEntity() == null && blockInWorld2.getEntity() == null) {
+            return true;
+        }
+        if (blockInWorld.getEntity() == null || blockInWorld2.getEntity() == null) {
+            return false;
+        }
+        RegistryAccess registryAccess = blockInWorld.getLevel().registryAccess();
+        return Objects.equals(blockInWorld.getEntity().saveWithId(registryAccess), blockInWorld2.getEntity().saveWithId(registryAccess));
+    }
+
+    public boolean test(BlockInWorld blockInWorld) {
+        if (AdventureModePredicate.areSameBlocks(blockInWorld, this.lastCheckedBlock, this.checksBlockEntity)) {
+            return this.lastResult;
+        }
+        this.lastCheckedBlock = blockInWorld;
+        this.checksBlockEntity = false;
+        for (BlockPredicate blockPredicate : this.predicates) {
+            if (!blockPredicate.matches(blockInWorld)) continue;
+            this.checksBlockEntity |= blockPredicate.requiresNbt();
+            this.lastResult = true;
+            return true;
+        }
+        this.lastResult = false;
+        return false;
+    }
+
+    public void addToTooltip(Consumer<Component> consumer) {
+        this.tooltip.forEach(consumer);
+    }
+
+    public AdventureModePredicate withTooltip(boolean bl) {
+        return new AdventureModePredicate(this.predicates, bl, this.tooltip);
+    }
+
+    private static List<Component> computeTooltip(List<BlockPredicate> list) {
+        for (BlockPredicate blockPredicate2 : list) {
+            if (!blockPredicate2.blocks().isEmpty()) continue;
+            return List.of(UNKNOWN_USE);
+        }
+        return list.stream().flatMap(blockPredicate -> blockPredicate.blocks().orElseThrow().stream()).distinct().map(holder -> ((Block)holder.value()).getName().withStyle(ChatFormatting.DARK_GRAY)).toList();
+    }
+
+    public boolean showInTooltip() {
+        return this.showInTooltip;
+    }
+
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (object instanceof AdventureModePredicate) {
+            AdventureModePredicate adventureModePredicate = (AdventureModePredicate)object;
+            return this.predicates.equals(adventureModePredicate.predicates) && this.showInTooltip == adventureModePredicate.showInTooltip;
+        }
+        return false;
+    }
+
+    public int hashCode() {
+        return this.predicates.hashCode() * 31 + (this.showInTooltip ? 1 : 0);
+    }
+
+    public String toString() {
+        return "AdventureModePredicate{predicates=" + String.valueOf(this.predicates) + ", showInTooltip=" + this.showInTooltip + "}";
+    }
+}
+
