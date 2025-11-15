@@ -1,7 +1,4 @@
 # Wiki Documentation for E:\Ax\MCServe\1.21.1SCR
-
-Generated on: 2025-11-15 19:33:23
-
 ## Table of Contents
 
 - [项目简介](#page-1)
